@@ -88,7 +88,7 @@ async function getEdgeConfig() {
     const items: Array<{ key: string; value: unknown }> = await res.json()
     const cfg: Record<string, unknown> = {}
     for (const { key, value } of items) cfg[key] = value
-    _edgeConfig = cfg as typeof _edgeConfig
+    _edgeConfig = cfg as unknown as typeof _edgeConfig
     console.log('[AI] Loaded model tiers from Edge Config')
   } catch {
     _edgeConfig = {}
@@ -202,11 +202,22 @@ async function callAnthropic(
   const model = tiers.claude[quality]
   const { default: Anthropic } = await import('@anthropic-ai/sdk')
   const client = new Anthropic({ apiKey: key })
-  const res = await withTimeout(
-    client.messages.create({ model, max_tokens: maxTokens, system, messages }),
-    'Anthropic',
-  )
-  return { text: (res.content[0] as { text: string }).text, model }
+
+  // Enable extended thinking (Claude advisor mode) for 'best' quality requests.
+  const params: Parameters<typeof client.messages.create>[0] = {
+    model,
+    max_tokens: maxTokens,
+    system,
+    messages,
+  }
+  if (quality === 'best') {
+    const budget = Math.min(10_000, Math.floor(maxTokens / 2))
+    ;(params as any).thinking = { type: 'enabled', budget_tokens: budget }
+  }
+
+  const res = await withTimeout(client.messages.create(params), 'Anthropic') as any
+  const textBlock = res.content.find((b: any) => b.type === 'text') as { text: string } | undefined
+  return { text: textBlock?.text ?? (res.content[0] as { text: string }).text, model }
 }
 
 // ── Core callAI — used by all projects ───────────────────────────────────────
