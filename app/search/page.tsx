@@ -204,23 +204,25 @@ function SearchPageInner() {
   const [locationLabel, setLocationLabel] = useState<string | null>(null)
   const didSearch = useRef(false)
 
-  // Returns city name from browser GPS via Nominatim (free, no key)
-  async function detectCity(): Promise<string | null> {
+  // Returns GPS coords from browser
+  async function detectCoords(): Promise<{ lat: number; lng: number; city: string | null } | null> {
     return new Promise(resolve => {
       if (!navigator.geolocation) return resolve(null)
       navigator.geolocation.getCurrentPosition(
         async pos => {
+          const { latitude: lat, longitude: lng } = pos.coords
+          // Best-effort reverse geocode for display label only
+          let city: string | null = null
           try {
-            const { latitude: lat, longitude: lng } = pos.coords
             const res = await fetch(
               `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
               { headers: { 'Accept-Language': 'en' } }
             )
             const data = await res.json()
             const addr = data.address ?? {}
-            const city = addr.city ?? addr.town ?? addr.village ?? addr.county ?? null
-            resolve(city)
-          } catch { resolve(null) }
+            city = addr.city ?? addr.town ?? addr.village ?? addr.county ?? null
+          } catch {}
+          resolve({ lat, lng, city })
         },
         () => resolve(null),
         { timeout: 5000 }
@@ -235,14 +237,18 @@ function SearchPageInner() {
 
   async function doSearch(q: string) {
     if (!q.trim()) return
-    let finalQ = q.trim()
+    const finalQ = q.trim()
 
-    // Auto-append city if no location mentioned
+    let coords: { lat: number; lng: number } | null = null
+
+    // Auto-detect GPS if no location in query
     if (!hasLocation(finalQ)) {
-      const city = await detectCity()
-      if (city) {
-        finalQ = `${finalQ} in ${city}`
-        setLocationLabel(city)
+      const detected = await detectCoords()
+      if (detected) {
+        coords = { lat: detected.lat, lng: detected.lng }
+        setLocationLabel(detected.city)
+      } else {
+        setLocationLabel(null)
       }
     } else {
       setLocationLabel(null)
@@ -258,7 +264,7 @@ function SearchPageInner() {
       const res  = await fetch('/api/places', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q.trim() }),
+        body: JSON.stringify({ query: finalQ, ...(coords ?? {}) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Search failed')

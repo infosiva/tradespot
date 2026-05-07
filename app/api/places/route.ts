@@ -31,9 +31,27 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const query: string = (body.query ?? '').trim()
+  const lat: number | null = typeof body.lat === 'number' ? body.lat : null
+  const lng: number | null = typeof body.lng === 'number' ? body.lng : null
 
   if (!query || query.length < 3) {
     return NextResponse.json({ error: 'Query too short' }, { status: 400 })
+  }
+
+  const placesBody: Record<string, unknown> = {
+    textQuery: query,
+    maxResultCount: 10,
+    languageCode: 'en',
+  }
+
+  // Bias results toward user's GPS coords if provided (radius 50km)
+  if (lat !== null && lng !== null) {
+    placesBody.locationBias = {
+      circle: {
+        center: { latitude: lat, longitude: lng },
+        radius: 50000,
+      },
+    }
   }
 
   try {
@@ -44,11 +62,7 @@ export async function POST(req: NextRequest) {
         'X-Goog-Api-Key': PLACES_KEY,
         'X-Goog-FieldMask': FIELD_MASK,
       },
-      body: JSON.stringify({
-        textQuery: query,
-        maxResultCount: 10,
-        languageCode: 'en',
-      }),
+      body: JSON.stringify(placesBody),
     })
 
     if (!res.ok) {
