@@ -201,14 +201,57 @@ function SearchPageInner() {
   const [error, setError]     = useState<string | null>(null)
   const [searched, setSearched] = useState(initialQuery)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
+  const [locationLabel, setLocationLabel] = useState<string | null>(null)
   const didSearch = useRef(false)
+
+  // Returns city name from browser GPS via Nominatim (free, no key)
+  async function detectCity(): Promise<string | null> {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) return resolve(null)
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          try {
+            const { latitude: lat, longitude: lng } = pos.coords
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+              { headers: { 'Accept-Language': 'en' } }
+            )
+            const data = await res.json()
+            const addr = data.address ?? {}
+            const city = addr.city ?? addr.town ?? addr.village ?? addr.county ?? null
+            resolve(city)
+          } catch { resolve(null) }
+        },
+        () => resolve(null),
+        { timeout: 5000 }
+      )
+    })
+  }
+
+  // Heuristic: query already mentions a location if it contains "in", "near", "at" + a word
+  function hasLocation(q: string): boolean {
+    return /\b(in|near|at|around)\s+\w/i.test(q)
+  }
 
   async function doSearch(q: string) {
     if (!q.trim()) return
+    let finalQ = q.trim()
+
+    // Auto-append city if no location mentioned
+    if (!hasLocation(finalQ)) {
+      const city = await detectCity()
+      if (city) {
+        finalQ = `${finalQ} in ${city}`
+        setLocationLabel(city)
+      }
+    } else {
+      setLocationLabel(null)
+    }
+
     setLoading(true)
     setError(null)
     setResults([])
-    setSearched(q.trim())
+    setSearched(finalQ)
     router.replace(`/search?q=${encodeURIComponent(q.trim())}`, { scroll: false })
 
     try {
@@ -277,8 +320,13 @@ function SearchPageInner() {
       {!loading && results.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-white/50 text-sm">
+            <p className="text-white/50 text-sm flex items-center gap-2 flex-wrap">
               {results.length} result{results.length !== 1 ? 's' : ''} for <span className="text-white/80">&ldquo;{searched}&rdquo;</span>
+              {locationLabel && (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/25 text-orange-300">
+                  <MapPin size={10} /> Auto-detected: {locationLabel}
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-white/30 text-xs">Ranked by AI trust score</span>
