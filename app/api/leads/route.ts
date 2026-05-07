@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       postcode,
       businesses:      JSON.stringify(businesses),
       created_at:      createdAt,
-    }).catch(e => console.error('[leads] Supabase insert failed:', e.message))
+}).then(({ error: e }) => { if (e) console.error('[leads] Supabase insert failed:', e.message) })
   }
 
   // Send confirmation to user

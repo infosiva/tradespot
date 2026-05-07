@@ -56,7 +56,17 @@ function TrustBadge({ score }: { score: number }) {
   )
 }
 
-function ResultCard({ place, rank }: { place: PlaceResult; rank: number }) {
+// Trade categories that make sense for quote requests (not restaurants/hotels)
+const QUOTE_TYPES = new Set(['plumber','electrician','builder','cleaner','hvac','mechanic','car-wash','painter','roofer','landscaper','locksmith','pest','removal'])
+
+function isTradePlace(place: PlaceResult): boolean {
+  // Heuristic: check if the place type or name implies a trade service
+  const n = place.name.toLowerCase()
+  return QUOTE_TYPES.has('plumber') || // always show for trade searches
+    /plumb|electr|builder|clean|hvac|heat|mechanic|roofing|landscap|locksmith|pest|removal|handyman|painter|decorator/.test(n)
+}
+
+function ResultCard({ place, rank, onRequestQuote }: { place: PlaceResult; rank: number; onRequestQuote: (p: PlaceResult) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [detail, setDetail]     = useState<PlaceDetail | null>(null)
   const [loading, setLoading]   = useState(false)
@@ -138,6 +148,12 @@ function ResultCard({ place, rank }: { place: PlaceResult; rank: number }) {
                   AI review summary
                 </button>
               )}
+              <button
+                onClick={() => onRequestQuote(place)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/35 text-orange-300 hover:bg-orange-500/30 font-semibold transition-colors"
+              >
+                <MessageSquarePlus size={12} /> Get quote
+              </button>
             </div>
           </div>
         </div>
@@ -195,6 +211,10 @@ function SearchPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const initialQuery = searchParams.get('q') ?? ''
+  // GPS coords passed from homepage "near me" / category clicks
+  const urlLat = parseFloat(searchParams.get('lat') ?? '')
+  const urlLng = parseFloat(searchParams.get('lng') ?? '')
+  const urlHasGps = !isNaN(urlLat) && !isNaN(urlLng)
 
   const [query, setQuery]     = useState(initialQuery)
   const [results, setResults] = useState<PlaceResult[]>([])
@@ -205,10 +225,14 @@ function SearchPageInner() {
   const [locationLabel, setLocationLabel] = useState<string | null>(null)
   const [openNowOnly, setOpenNowOnly] = useState(false)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [quoteTarget, setQuoteTarget] = useState<PlaceResult | null>(null) // null = top-3 mode, set = single business
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<any>(null)
   const didSearch = useRef(false)
-  const cachedCoords = useRef<{ lat: number; lng: number; city: string | null } | null>(null)
+  // Seed cachedCoords from URL params if homepage already got GPS
+  const cachedCoords = useRef<{ lat: number; lng: number; city: string | null } | null>(
+    urlHasGps ? { lat: urlLat, lng: urlLng, city: null } : null
+  )
   const coordsReady  = useRef<Promise<void> | null>(null)
 
   // Kick off geolocation immediately on mount — cache result for doSearch
@@ -418,7 +442,7 @@ function SearchPageInner() {
               filtered.length > 0 ? (
                 <div className="space-y-4">
                   {filtered.map((place, i) => (
-                    <ResultCard key={place.id} place={place} rank={i + 1} />
+                    <ResultCard key={place.id} place={place} rank={i + 1} onRequestQuote={(p) => { setQuoteTarget(p); setShowQuoteModal(true) }} />
                   ))}
                 </div>
               ) : (
@@ -456,12 +480,16 @@ function SearchPageInner() {
         </div>
       )}
 
-      {/* Quote modal */}
+      {/* Quote modal — single business (from card button) or top-3 (from filter bar) */}
       {showQuoteModal && results.length > 0 && (
         <QuoteModal
-          businesses={results.slice(0, 5).map(r => ({ id: r.id, name: r.name, phone: r.phone }))}
+          businesses={
+            quoteTarget
+              ? [{ id: quoteTarget.id, name: quoteTarget.name, phone: quoteTarget.phone }]
+              : results.slice(0, 3).map(r => ({ id: r.id, name: r.name, phone: r.phone }))
+          }
           searchQuery={searched}
-          onClose={() => setShowQuoteModal(false)}
+          onClose={() => { setShowQuoteModal(false); setQuoteTarget(null) }}
         />
       )}
 

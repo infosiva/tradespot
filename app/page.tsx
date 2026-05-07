@@ -49,12 +49,35 @@ export default function HomePage() {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [listening, setListening] = useState(false)
+  const [locating, setLocating] = useState(false)
   const recognitionRef = useRef<any>(null)
+  const gpsRef = useRef<{ lat: number; lng: number } | null>(null)
 
   function handleSearch(q?: string) {
     const term = (q ?? query).trim()
     if (!term) return
-    router.push(`/search?q=${encodeURIComponent(term)}`)
+    const gps = gpsRef.current
+    const url = gps
+      ? `/search?q=${encodeURIComponent(term)}&lat=${gps.lat}&lng=${gps.lng}`
+      : `/search?q=${encodeURIComponent(term)}`
+    router.push(url)
+  }
+
+  function searchNearMe(category: string) {
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        gpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setLocating(false)
+        router.push(`/search?q=${encodeURIComponent(category + ' near me')}&lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`)
+      },
+      () => {
+        setLocating(false)
+        // fallback — search without GPS, user can add city
+        router.push(`/search?q=${encodeURIComponent(category)}`)
+      },
+      { timeout: 6000 }
+    )
   }
 
   function startVoice() {
@@ -109,6 +132,14 @@ export default function HomePage() {
         {/* Search bar */}
         <div className="relative max-w-2xl mx-auto">
           <div className={`flex items-center gap-3 bg-white/[0.06] border rounded-2xl px-5 py-4 transition-colors ${listening ? 'border-red-500/60 bg-red-500/[0.04]' : 'border-white/[0.12] focus-within:border-orange-500/50'}`}>
+            <button
+              onClick={() => searchNearMe(query || 'local businesses')}
+              disabled={locating}
+              title="Search near my location"
+              className={`flex-shrink-0 p-2 rounded-xl transition-all duration-200 ${locating ? 'bg-orange-500/25 text-orange-400 animate-pulse' : 'bg-white/[0.06] text-white/40 hover:text-orange-400 hover:bg-orange-500/[0.10]'}`}
+            >
+              <MapPin size={18} />
+            </button>
             <Search size={20} className="text-white/40 flex-shrink-0" />
             <input
               type="text"
@@ -186,7 +217,7 @@ export default function HomePage() {
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
-              onClick={() => handleSearch(cat.label)}
+              onClick={() => searchNearMe(cat.label)}
               className="bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.06] transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/10 p-4 flex flex-col items-center gap-2 group"
             >
               <span className="text-3xl">{cat.icon}</span>
