@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState, useRef, Suspense, lazy } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Search, ArrowRight, Star, Phone, Globe, MapPin, Clock, ChevronDown, ChevronUp, List, Map, Mic, MicOff } from 'lucide-react'
+import { Search, ArrowRight, Star, Phone, Globe, MapPin, Clock, ChevronDown, ChevronUp, List, Map, Mic, MicOff, MessageSquarePlus } from 'lucide-react'
+import QuoteModal from '@/components/QuoteModal'
 
 const MapView = lazy(() => import('@/components/MapView'))
 
@@ -202,6 +203,8 @@ function SearchPageInner() {
   const [searched, setSearched] = useState(initialQuery)
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [locationLabel, setLocationLabel] = useState<string | null>(null)
+  const [openNowOnly, setOpenNowOnly] = useState(false)
+  const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<any>(null)
   const didSearch = useRef(false)
@@ -376,9 +379,23 @@ function SearchPageInner() {
                 </span>
               )}
             </p>
-            <div className="flex items-center gap-2">
-              <span className="text-white/30 text-xs">Ranked by AI trust score</span>
-              <div className="flex items-center gap-1 ml-2 bg-white/[0.06] border border-white/[0.10] rounded-lg p-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Open now toggle */}
+              <button
+                onClick={() => setOpenNowOnly(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${openNowOnly ? 'bg-green-500/20 border-green-500/30 text-green-300' : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60'}`}
+              >
+                <Clock size={12} /> Open now
+              </button>
+              {/* Get quotes CTA */}
+              <button
+                onClick={() => setShowQuoteModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border bg-orange-500/20 border-orange-500/30 text-orange-300 hover:bg-orange-500/30 transition-all"
+              >
+                <MessageSquarePlus size={12} /> Get free quotes
+              </button>
+              {/* List/Map toggle */}
+              <div className="flex items-center gap-1 bg-white/[0.06] border border-white/[0.10] rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('list')}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${viewMode === 'list' ? 'bg-orange-500/25 text-orange-300' : 'text-white/40 hover:text-white/60'}`}
@@ -395,20 +412,29 @@ function SearchPageInner() {
             </div>
           </div>
 
-          {viewMode === 'list' ? (
-            <div className="space-y-4">
-              {results.map((place, i) => (
-                <ResultCard key={place.id} place={place} rank={i + 1} />
-              ))}
-            </div>
-          ) : (
-            <Suspense fallback={<div className="h-96 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/40 text-sm">Loading map…</div>}>
-              <MapView results={results} />
-            </Suspense>
-          )}
+          {(() => {
+            const filtered = openNowOnly ? results.filter(r => r.open === true) : results
+            return viewMode === 'list' ? (
+              filtered.length > 0 ? (
+                <div className="space-y-4">
+                  {filtered.map((place, i) => (
+                    <ResultCard key={place.id} place={place} rank={i + 1} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-white/40 text-sm">
+                  No open businesses found right now. <button className="text-orange-400 underline" onClick={() => setOpenNowOnly(false)}>Show all</button>
+                </div>
+              )
+            ) : (
+              <Suspense fallback={<div className="h-96 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/40 text-sm">Loading map…</div>}>
+                <MapView results={filtered} />
+              </Suspense>
+            )
+          })()}
 
           <p className="text-center text-white/25 text-xs mt-8">
-            Results from Google Places API · AI review analysis by TradeSpot
+            Results from Google Places API · AI review analysis by AnyLocal
           </p>
         </>
       )}
@@ -428,6 +454,15 @@ function SearchPageInner() {
           <div className="text-4xl mb-4">🔧</div>
           <p className="text-sm">Enter a trade and location above to get started</p>
         </div>
+      )}
+
+      {/* Quote modal */}
+      {showQuoteModal && results.length > 0 && (
+        <QuoteModal
+          businesses={results.slice(0, 5).map(r => ({ id: r.id, name: r.name, phone: r.phone }))}
+          searchQuery={searched}
+          onClose={() => setShowQuoteModal(false)}
+        />
       )}
 
     </div>
