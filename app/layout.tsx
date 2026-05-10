@@ -44,10 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <div className="flex items-center gap-2">
               <Link
-                href="/search"
+                href="/portal"
                 className="text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors hidden sm:block"
               >
-                Browse
+                My quotes
               </Link>
               <Link
                 href="/for-businesses"
