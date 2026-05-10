@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { X, Send, CheckCircle, Phone, User, Mail, MapPin, FileText } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { X, Send, CheckCircle, Phone, User, Mail, MapPin, FileText, Mic, MicOff } from 'lucide-react'
 
 interface Business {
   id:    string
@@ -24,6 +24,30 @@ export default function QuoteModal({ businesses, searchQuery, onClose }: Props) 
   const [loading, setLoading]     = useState(false)
   const [done, setDone]           = useState(false)
   const [error, setError]         = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+
+  const toggleVoice = useCallback(() => {
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
+    if (!SR) return
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+    const rec = new SR()
+    rec.continuous = true
+    rec.interimResults = true
+    rec.lang = 'en-GB'
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join(' ')
+      setJob(transcript)
+    }
+    rec.onend = () => setListening(false)
+    rec.start()
+    recognitionRef.current = rec
+    setListening(true)
+  }, [listening])
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -90,13 +114,21 @@ export default function QuoteModal({ businesses, searchQuery, onClose }: Props) 
             <p className="text-white/55 text-sm mb-1">
               Your request was sent to <strong className="text-white">{selected.size} business{selected.size > 1 ? 'es' : ''}</strong>.
             </p>
-            <p className="text-white/40 text-xs mb-8">Check your email for confirmation. Businesses typically respond within 24 hours.</p>
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-orange-500/20 border border-orange-500/30 text-orange-300 font-medium text-sm hover:bg-orange-500/30 transition-colors"
-            >
-              Close
-            </button>
+            <p className="text-white/40 text-xs mb-6">Check your email for confirmation. Businesses typically respond within 24 hours.</p>
+            <div className="flex flex-col gap-3">
+              <a
+                href={`/portal?email=${encodeURIComponent(email)}`}
+                className="block w-full text-center px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-semibold text-sm transition-colors"
+              >
+                Track my quotes →
+              </a>
+              <button
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/50 font-medium text-sm hover:bg-white/[0.08] transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={submit} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
@@ -126,14 +158,17 @@ export default function QuoteModal({ businesses, searchQuery, onClose }: Props) 
             <div>
               <label className="text-white/50 text-xs font-medium flex items-center gap-1.5 mb-1.5">
                 <FileText size={12} /> Describe your job *
+                <button type="button" onClick={toggleVoice} className={`ml-auto flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs transition-colors ${listening ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-white/40 hover:text-white/70'}`}>
+                  {listening ? <><MicOff size={10} /> Stop</> : <><Mic size={10} /> Voice</>}
+                </button>
               </label>
               <textarea
                 required
                 value={job}
                 onChange={e => setJob(e.target.value)}
-                placeholder={`e.g. "Need a plumber to fix a leaking pipe under the kitchen sink. Urgently needed."`}
+                placeholder={listening ? '🎤 Listening… speak now' : `e.g. "Need a plumber to fix a leaking pipe under the kitchen sink. Urgently needed."`}
                 rows={3}
-                className="w-full bg-white/[0.04] border border-white/[0.10] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/30 outline-none focus:border-orange-500/50 resize-none transition-colors"
+                className={`w-full bg-white/[0.04] border rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/30 outline-none resize-none transition-colors ${listening ? 'border-red-500/50 bg-red-500/5' : 'border-white/[0.10] focus:border-orange-500/50'}`}
               />
             </div>
 
