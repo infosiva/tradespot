@@ -157,9 +157,82 @@ Transform single-column form + raw text output into a two-column live preview ex
 
 ---
 
-## 4. Out of Scope
+## 4. Email Marketing — Both Products
+
+### Infrastructure
+- Provider: **Resend** (free tier: 3k emails/month)
+- SDK: `resend` npm package — single shared client in `lib/resend.ts`
+- Email templates: React Email components (`@react-email/components`) — renders to HTML + plain text
+- Trigger: API route called after gate events (sign-up / first generation / upgrade)
+- Storage: email + sequence state in Supabase `email_sequences` table
+
+### Supabase table: `email_sequences`
+```sql
+create table email_sequences (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  product text not null,           -- 'resumevault' | 'anylocal'
+  step integer not null default 0, -- which email in sequence (0-indexed)
+  subscribed_at timestamptz default now(),
+  last_sent_at timestamptz,
+  unsubscribed boolean default false
+);
+```
+
+### ResumeVault drip (4 emails)
+| Step | Delay | Subject | Trigger to advance |
+|------|-------|---------|-------------------|
+| 0 | immediate | "Your resume is ready — here's what ATS sees" | sent on first generation |
+| 1 | +2 days | "The 3 keywords you're missing (and how to add them)" | cron job |
+| 2 | +5 days | "Write a cover letter in 30 seconds" | cron job |
+| 3 | +9 days | "Unlock unlimited resumes — Pro is 50% off this week" | cron job |
+
+### AnyLocal drip (4 emails)
+| Step | Delay | Subject | Trigger to advance |
+|------|-------|---------|-------------------|
+| 0 | immediate | "Your first quote request is in — here's what happens next" | sent on first quote submit |
+| 1 | +2 days | "3 tips to get faster responses from local tradespeople" | cron job |
+| 2 | +5 days | "Top-rated trades near [postcode]" | cron job |
+| 3 | +10 days | "Are you a tradesperson? List for free on AnyLocal" | cron job — provider acquisition |
+
+### API routes
+| Route | Purpose |
+|-------|---------|
+| `POST /api/email/subscribe` | Insert row into email_sequences, send step-0 immediately via Resend |
+| `POST /api/email/unsubscribe` | Set unsubscribed=true (linked from email footer) |
+| `GET /api/cron/email-drip` | Vercel cron (daily 9am UTC) — find rows where next step is due, send, update last_sent_at + step |
+
+### Email template components (React Email)
+- `emails/resumevault/welcome.tsx` — step 0
+- `emails/resumevault/ats-explained.tsx` — step 1
+- `emails/resumevault/cover-letter.tsx` — step 2
+- `emails/resumevault/pro-upsell.tsx` — step 3
+- `emails/anylocal/quote-sent.tsx` — step 0
+- `emails/anylocal/tips.tsx` — step 1
+- `emails/anylocal/top-trades.tsx` — step 2
+- `emails/anylocal/provider-acquisition.tsx` — step 3
+
+### Unsubscribe
+- One-click unsubscribe link in every footer: `/api/email/unsubscribe?id=<sequence_id>`
+- CAN-SPAM compliant — physical address line in footer (use "London, UK")
+- No re-subscribe mechanism needed at this stage
+
+### Trigger integration points
+- ResumeVault: call `/api/email/subscribe` in `POST /api/build-resume` when email present in form
+- AnyLocal: call `/api/email/subscribe` in QuoteModal submit handler
+
+### Vercel cron config (`vercel.json` or `vercel.ts`)
+```json
+{ "crons": [{ "path": "/api/cron/email-drip", "schedule": "0 9 * * *" }] }
+```
+
+---
+
+## 5. Out of Scope
 
 - Portal/page.tsx (quote management) — separate task
 - AnyLocal onboarding flow
 - ResumeVault LinkedIn import
 - Multi-page resume support
+- A/B testing email subjects
+- Email analytics dashboard
