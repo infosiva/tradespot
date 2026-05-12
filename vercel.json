@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/drip-cron",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

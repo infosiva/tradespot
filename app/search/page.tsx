@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, Suspense, lazy } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Search, Mic, MicOff } from 'lucide-react'
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels'
 import QuoteModal from '@/components/QuoteModal'
 import ResultCard, { PlaceResult } from '@/components/ResultCard'
 
@@ -231,10 +232,10 @@ function SearchPageInner() {
         </div>
       </div>
 
-      {/* Split pane body */}
-      <div className="flex-1 flex max-w-[1400px] mx-auto w-full">
-        {/* Left: results list */}
-        <div className="w-full md:w-[420px] flex-shrink-0 overflow-y-auto px-4 py-4 space-y-3 md:h-[calc(100vh-120px)] md:sticky md:top-[120px]">
+      {/* Split pane body — resizable on desktop, stacked on mobile */}
+      <div className="flex-1 max-w-[1400px] mx-auto w-full">
+        {/* Mobile: stacked layout */}
+        <div className="md:hidden px-4 py-4 space-y-3">
           {loading && (
             <div className="flex items-center gap-3 text-white/40 text-sm py-8 justify-center">
               <div className="w-4 h-4 rounded-full border-2 border-orange-500/60 border-t-transparent animate-spin" />
@@ -267,15 +268,60 @@ function SearchPageInner() {
           ))}
         </div>
 
-        {/* Right: sticky map */}
-        <div className="hidden md:block flex-1 sticky top-[120px] h-[calc(100vh-120px)] p-4">
-          <Suspense fallback={<div className="h-full rounded-2xl bg-white/[0.03] border border-white/[0.06]" />}>
-            <MapView
-              results={filteredResults}
-              activeId={activeId}
-              onPinClick={id => setActiveId(prev => prev === id ? null : id)}
-            />
-          </Suspense>
+        {/* Desktop: resizable split pane */}
+        <div className="hidden md:block h-[calc(100vh-120px)]">
+          <PanelGroup orientation="horizontal" className="h-full">
+            <Panel defaultSize={35} minSize={20} maxSize={60}>
+              <div className="h-full overflow-y-auto px-4 py-4 space-y-3">
+                {loading && (
+                  <div className="flex items-center gap-3 text-white/40 text-sm py-8 justify-center">
+                    <div className="w-4 h-4 rounded-full border-2 border-orange-500/60 border-t-transparent animate-spin" />
+                    Searching...
+                  </div>
+                )}
+                {error && (
+                  <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-4">{error}</div>
+                )}
+                {!loading && filteredResults.length === 0 && searched && !error && (
+                  <div className="text-white/40 text-sm py-8 text-center">No results for &ldquo;{searched}&rdquo;</div>
+                )}
+                {!loading && !searched && (
+                  <div className="text-white/30 text-sm py-12 text-center">
+                    <div className="text-3xl mb-3">🔧</div>
+                    Enter a trade and location above to get started
+                  </div>
+                )}
+                {filteredResults.map((place, i) => (
+                  <ResultCard
+                    key={place.id}
+                    place={place}
+                    rank={i + 1}
+                    userLat={userLat}
+                    userLng={userLng}
+                    active={activeId === place.id}
+                    onRequestQuote={p => { setQuoteTarget(p); setShowQuoteModal(true) }}
+                    onActivate={id => setActiveId(prev => prev === id ? null : id)}
+                  />
+                ))}
+              </div>
+            </Panel>
+
+            <PanelResizeHandle className="w-1.5 mx-0.5 flex items-center justify-center group cursor-col-resize">
+              <div className="w-1 h-12 rounded-full bg-white/[0.08] group-hover:bg-orange-500/40 transition-colors" />
+            </PanelResizeHandle>
+
+            <Panel defaultSize={65} minSize={40}>
+              <div className="h-full p-4">
+                <Suspense fallback={<div className="h-full rounded-2xl bg-white/[0.03] border border-white/[0.06]" />}>
+                  <MapView
+                    results={filteredResults}
+                    activeId={activeId}
+                    onPinClick={id => setActiveId(prev => prev === id ? null : id)}
+                  />
+                </Suspense>
+              </div>
+            </Panel>
+          </PanelGroup>
         </div>
       </div>
 

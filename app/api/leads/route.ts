@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { subscribeContact } from '@/lib/drip'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
@@ -115,6 +116,11 @@ export async function POST(req: NextRequest) {
     console.warn('[leads] Resend not configured — emails not sent')
     warnings.push('emails_skipped')
   }
+
+  // Enqueue drip sequence — fire-and-forget, never block lead submission
+  subscribeContact({ email, firstName: name.split(' ')[0], subscribedAt: createdAt }).catch(e =>
+    console.error('[leads] drip subscribe failed:', e.message)
+  )
 
   // If both DB and email failed, surface it so the UI can warn the user
   const criticalFailure = warnings.includes('lead_save_failed') && warnings.includes('confirmation_email_failed')
