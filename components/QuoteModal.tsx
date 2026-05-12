@@ -25,9 +25,11 @@ export default function QuoteModal({ businesses, searchQuery, onClose }: Props) 
   const [done, setDone]           = useState(false)
   const [error, setError]         = useState<string | null>(null)
   const [listening, setListening] = useState(false)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
 
   const toggleVoice = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
     if (!SR) return
     if (listening) {
@@ -39,8 +41,9 @@ export default function QuoteModal({ businesses, searchQuery, onClose }: Props) 
     rec.continuous = true
     rec.interimResults = true
     rec.lang = 'en-GB'
-    rec.onresult = (e: SpeechRecognitionEvent) => {
-      const transcript = Array.from(e.results).map(r => r[0].transcript).join(' ')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as any[]).map((r: any) => r[0].transcript).join(' ')
       setJob(transcript)
     }
     rec.onend = () => setListening(false)
