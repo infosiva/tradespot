@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+
+const jakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-display', weight: ['700', '800'], display: 'swap' })
 import './globals.css'
 import { getMeshStyle, getScrollbarColor, COLOR_MAP } from '@/lib/themeColors'
 import Link from 'next/link'
 import ChatBot from '@/components/ChatBot'
 import OwnerAssistant from '@/components/OwnerPanel'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' })
 
 export const metadata: Metadata = {
   title:       'AnyLocal — Find Anything Near You, Anywhere in the World',
@@ -31,9 +33,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       } as React.CSSProperties}
       suppressHydrationWarning
     >
-      <body className={`${inter.className} min-h-full flex flex-col text-white`}
-        style={{ background: colors.base }}
+      <body className={`${inter.variable} ${jakartaSans.variable} min-h-full flex flex-col text-white`}
+        style={{ background: colors.base, fontFamily: 'var(--font-body, system-ui)', overflowX: 'hidden' }}
       >
+        <style>{`
+          *, *::before, *::after { box-sizing: border-box; }
+          html { overflow-x: hidden; max-width: 100%; }
+          body { overflow-x: hidden; max-width: 100%; }
+          h1, h2, h3, .font-display { font-family: var(--font-display, system-ui) !important; }
+          img, video { max-width: 100%; }
+          /* Horizontal category scroll — mobile only */
+          .cat-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
+          .cat-scroll::-webkit-scrollbar { display: none; }
+          /* Stronger card lift */
+          .local-card { transition: all 180ms cubic-bezier(0.23,1,0.32,1); }
+          .local-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.5); border-color: rgba(249,115,22,0.4) !important; }
+          /* Search bar pulse on focus */
+          .search-bar:focus-within { border-color: rgba(249,115,22,0.5) !important; box-shadow: 0 0 0 3px rgba(249,115,22,0.1) !important; }
+          @media (max-width: 640px) {
+            .desktop-grid { display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; scrollbar-width: none; }
+            .desktop-grid::-webkit-scrollbar { display: none; }
+            .desktop-grid > * { flex-shrink: 0 !important; min-width: 100px !important; }
+          }
+        `}</style>
         <div style={meshStyle} />
 
         {/* Navbar */}

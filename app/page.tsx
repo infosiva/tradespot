@@ -106,11 +106,11 @@ export default function HomePage() {
           <Zap size={11} /> AI-powered · Google reviews · Free to search
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.1] tracking-tight mb-4">
+        <h1 className="font-display text-4xl md:text-6xl font-extrabold leading-[1.05] tracking-tight mb-4" style={{ fontFamily: 'var(--font-display, system-ui)' }}>
           <span className="text-white">Find trusted </span>
-          <span className="bg-gradient-to-r from-orange-400 to-amber-200 bg-clip-text text-transparent">local tradespeople</span>
+          <span className="bg-gradient-to-r from-orange-400 to-amber-200 bg-clip-text text-transparent">local services</span>
           <br className="hidden md:block" />
-          <span className="text-white"> & businesses</span>
+          <span className="text-white"> near you</span>
         </h1>
 
         <p className="text-white/50 text-lg mb-8 max-w-xl mx-auto leading-relaxed">
@@ -120,8 +120,8 @@ export default function HomePage() {
 
         {/* ── Search bar ── */}
         <div className="relative max-w-2xl mx-auto mb-5">
-          <div className={`flex items-center gap-2 bg-white/[0.06] border rounded-2xl px-4 py-3.5 transition-colors shadow-2xl shadow-black/40 ${
-            listening ? 'border-red-500/50 bg-red-500/[0.04]' : 'border-white/[0.14] focus-within:border-orange-500/50'
+          <div className={`search-bar flex items-center gap-2 bg-white/[0.06] border rounded-2xl px-4 py-3.5 transition-all shadow-2xl shadow-black/40 ${
+            listening ? 'border-red-500/50 bg-red-500/[0.04]' : 'border-white/[0.14]'
           }`}>
             <Search size={18} className="text-white/35 flex-shrink-0 ml-1" />
             <input
