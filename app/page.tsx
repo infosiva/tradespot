@@ -94,6 +94,85 @@ function LivePulse() {
   )
 }
 
+// ── Floating chatbot ─────────────────────────────────────
+function FloatingChat() {
+  const [open, setOpen] = useState(false)
+  const [msgs, setMsgs] = useState<{ role: 'user' | 'bot'; text: string }[]>([
+    { role: 'bot', text: 'Hi! Tell me what local service you need and I\'ll help you find the best options 🔍' },
+  ])
+  const [input, setInput] = useState('')
+
+  async function send() {
+    if (!input.trim()) return
+    const userMsg = input
+    setMsgs(m => [...m, { role: 'user', text: userMsg }])
+    setInput('')
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: userMsg }],
+          system: 'You are TradeSpot\'s AI assistant. Help users find local businesses, trades, and services. Be concise and helpful.',
+        }),
+      })
+      const data = await res.json()
+      setMsgs(m => [...m, { role: 'bot', text: data.text || data.content || 'Let me help you find that…' }])
+    } catch {
+      setMsgs(m => [...m, { role: 'bot', text: 'Having trouble connecting — try the search bar above!' }])
+    }
+  }
+
+  return (
+    <>
+      <motion.button
+        onClick={() => setOpen(o => !o)}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.95 }}
+        style={{ position: 'fixed', bottom: 24, right: 24, width: 52, height: 52, borderRadius: '50%',
+          background: T.btnGrad, border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 20px rgba(234,88,12,0.5)', zIndex: 1000, fontSize: 20 }}
+      >
+        {open ? '✕' : '💬'}
+      </motion.button>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: 10, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          style={{ position: 'fixed', bottom: 88, right: 24, width: 320, height: 420,
+            background: 'rgba(14,9,0,0.97)', border: `1px solid ${T.borderHi}`,
+            borderRadius: 16, display: 'flex', flexDirection: 'column', zIndex: 1000,
+            overflow: 'hidden', backdropFilter: 'blur(20px)' }}
+        >
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${T.border2}`, fontSize: 13, fontWeight: 700, color: T.text }}>
+            TradeSpot Assistant
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {msgs.map((m, i) => (
+              <div key={i} style={{
+                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                background: m.role === 'user' ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.06)',
+                padding: '8px 12px', borderRadius: 10, fontSize: 12, color: 'rgba(250,248,244,0.85)', maxWidth: '85%',
+              }}>{m.text}</div>
+            ))}
+          </div>
+          <div style={{ padding: '10px 12px', borderTop: `1px solid ${T.border}`, display: 'flex', gap: 8 }}>
+            <input value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && send()}
+              placeholder="What service do you need?"
+              style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: `1px solid ${T.border2}`,
+                borderRadius: 8, padding: '6px 10px', fontSize: 12, color: T.text, outline: 'none' }} />
+            <button onClick={send}
+              style={{ background: T.btnGrad, border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', cursor: 'pointer' }}>→</button>
+          </div>
+        </motion.div>
+      )}
+    </>
+  )
+}
+
 // ── Main ─────────────────────────────────────────────────
 export default function HomePage() {
   const router      = useRouter()
@@ -426,6 +505,7 @@ export default function HomePage() {
           .pop-grid { grid-template-columns: repeat(3, 1fr) !important; }
         }
       `}</style>
+      <FloatingChat />
     </div>
   )
 }
