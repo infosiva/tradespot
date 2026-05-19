@@ -7,6 +7,8 @@ import { getMeshStyle, getScrollbarColor, COLOR_MAP } from '@/lib/themeColors'
 import Link from 'next/link'
 import ChatBot from '@/components/ChatBot'
 import OwnerAssistant from '@/components/OwnerPanel'
+import AuthButton from '@/components/AuthButton'
+import AffiliateStrip from '@/components/AffiliateStrip'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' })
 
@@ -58,6 +60,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</style>
         <div style={meshStyle} />
 
+        <div style={{ position:"fixed", top:"10px", right:"16px", zIndex:60 }}><AuthButton /></div>
+
         {/* Navbar */}
         <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-black/20 backdrop-blur-md">
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -94,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <ChatBot />
         <OwnerAssistant />
+        <AffiliateStrip />
 
         <footer className="border-t border-white/[0.06] py-10 px-6 mt-20">
           <div className="max-w-6xl mx-auto">
