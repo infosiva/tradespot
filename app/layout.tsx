@@ -5,10 +5,10 @@ const jakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-di
 import './globals.css'
 import { getMeshStyle, getScrollbarColor, COLOR_MAP } from '@/lib/themeColors'
 import Link from 'next/link'
-import ChatBot from '@/components/ChatBot'
 import OwnerAssistant from '@/components/OwnerPanel'
 import AuthButton from '@/components/AuthButton'
 import AffiliateStrip from '@/components/AffiliateStrip'
+import OnboardingTour from '@/components/OnboardingTour'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' })
 
@@ -96,7 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        <ChatBot />
+        <OnboardingTour />
         <OwnerAssistant />
         <AffiliateStrip />
 
